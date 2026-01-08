@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Analyzer - Real-time Vision</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .video-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        video, canvas, img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        #analysis-result {
+            background: #f0f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        #analysis-text {
+            color: #1e293b;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .timestamp {
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .auto-mode {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .auto-mode.active {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+
+        .detection-info {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .detection-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Image Analyzer</h1>
+
+        <div class="card">
+            <h2 style="margin-bottom: 20px; color: #667eea;">Real-time Vision Analysis</h2>
+            
+            <div class="controls">
+                <button id="startWebcam" class="btn-primary">📹 Start Webcam</button>
+                <button id="stopWebcam" class="btn-danger" disabled>⏹️ Stop Webcam</button>
+                <button id="captureBtn" class="btn-success" disabled>📸 Analyze Frame</button>
+                <div class="file-input-wrapper">
+                    <button class="btn-primary" onclick="document.getElementById('imageInput').click()">📁 Upload Image</button>
+                    <input type="file" id="imageInput" accept="image/*">
+                </div>
+            </div>
+
+            <div class="auto-mode" id="autoMode">
+                <label>
+                    <input type="checkbox" id="autoAnalyze">
+                    <strong>Auto-Analyze Mode</strong> - Automatically analyze webcam every 3 seconds
+                </label>
+            </div>
+
+            <div id="status"></div>
+
+            <div class="video-container">
+                <div class="video-wrapper">
+                    <video id="webcam" autoplay playsinline></video>
+                    <div class="video-label">Live Feed</div>
+                </div>
+                <div class="video-wrapper">
+                    <canvas id="canvas"></canvas>
+                    <div class="video-label">AI Analysis</div>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing image...</p>
+            </div>
+
+            <div id="analysis-result" style="display: none;">
+                <h3 style="margin-bottom: 15px; color: #667eea;">📊 Analysis Results</h3>
+                <div id="analysis-text"></div>
+                <div class="detection-info" id="detectionInfo"></div>
+                <div class="timestamp" id="timestamp"></div>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">👤</div>
+                <h3>Face Detection</h3>
+                <p>Detects and counts people in images</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">😊</div>
+                <h3>Emotion Analysis</h3>
+                <p>Identifies smiles and expressions</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>Scene Understanding</h3>
+                <p>Analyzes lighting, colors, and complexity</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-time Processing</h3>
+                <p>Instant analysis of live webcam feed</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const webcamElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('canvas');
+        const startWebcamBtn = document.getElementById('startWebcam');
+        const stopWebcamBtn = document.getElementById('stopWebcam');
+        const captureBtn = document.getElementById('captureBtn');
+        const imageInput = document.getElementById('imageInput');
+        const loading = document.getElementById('loading');
+        const analysisResult = document.getElementById('analysis-result');
+        const analysisText = document.getElementById('analysis-text');
+        const timestamp = document.getElementById('timestamp');
+        const statusDiv = document.getElementById('status');
+        const autoAnalyzeCheckbox = document.getElementById('autoAnalyze');
+        const autoModeDiv = document.getElementById('autoMode');
+        const detectionInfo = document.getElementById('detectionInfo');
+
+        let stream = null;
+        let autoAnalyzeInterval = null;
+
+        // Start webcam
+        startWebcamBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                webcamElement.srcObject = stream;
+                
+                startWebcamBtn.disabled = true;
+                stopWebcamBtn.disabled = false;
+                captureBtn.disabled = false;
+                
+                showStatus('Webcam started successfully!', 'success');
+            } catch (error) {
+                showStatus('Error accessing webcam: ' + error.message, 'error');
+                console.error('Error accessing webcam:', error);
+            }
+        });
+
+        // Stop webcam
+        stopWebcamBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                webcamElement.srcObject = null;
+                stream = null;
+            }
+            
+            if (autoAnalyzeInterval) {
+                clearInterval(autoAnalyzeInterval);
+                autoAnalyzeInterval = null;
+            }
+            
+            startWebcamBtn.disabled = false;
+            stopWebcamBtn.disabled = true;
+            captureBtn.disabled = true;
+            autoAnalyzeCheckbox.checked = false;
+            
+            showStatus('Webcam stopped', 'success');
+        });
+
+        // Capture and analyze frame
+        captureBtn.addEventListener('click', () => {
+            captureAndAnalyze();
+        });
+
+        // Auto-analyze mode
+        autoAnalyzeCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                autoModeDiv.classList.add('active');
+                showStatus('Auto-analyze mode enabled', 'success');
+                
+                // Immediate first capture
+                captureAndAnalyze();
+                
+                // Then continue every 3 seconds
+                autoAnalyzeInterval = setInterval(() => {
+                    captureAndAnalyze();
+                }, 3000);
+            } else {
+                autoModeDiv.classList.remove('active');
+                if (autoAnalyzeInterval) {
+                    clearInterval(autoAnalyzeInterval);
+                    autoAnalyzeInterval = null;
+                }
+                showStatus('Auto-analyze mode disabled', 'success');
+            }
+        });
+
+        // Upload image
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    analyzeImage(event.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function captureAndAnalyze() {
+            const context = canvasElement.getContext('2d');
+            canvasElement.width = webcamElement.videoWidth;
+            canvasElement.height = webcamElement.videoHeight;
+            context.drawImage(webcamElement, 0, 0);
+            
+            const imageData = canvasElement.toDataURL('image/jpeg');
+            analyzeImage(imageData);
+        }
+
+        async function analyzeImage(imageData) {
+            loading.classList.add('active');
+            analysisResult.style.display = 'none';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    showStatus('Error: ' + result.error, 'error');
+                    return;
+                }
+                
+                // Display annotated image
+                const img = new Image();
+                img.onload = () => {
+                    const context = canvasElement.getContext('2d');
+                    canvasElement.width = img.width;
+                    canvasElement.height = img.height;
+                    context.drawImage(img, 0, 0);
+                };
+                img.src = result.annotated_image;
+                
+                // Display analysis text
+                analysisText.textContent = result.description;
+                timestamp.textContent = `Analyzed at: ${result.timestamp}`;
+                
+                // Display detection info
+                detectionInfo.innerHTML = `
+                    <div class="detection-badge">👥 Faces: ${result.detections.faces}</div>
+                `;
+                
+                analysisResult.style.display = 'block';
+                showStatus('Analysis complete!', 'success');
+                
+            } catch (error) {
+                showStatus('Error analyzing image: ' + error.message, 'error');
+                console.error('Error:', error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
